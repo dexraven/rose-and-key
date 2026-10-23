@@ -1,0 +1,82 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.4'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.goldgell'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Core Spring Boot Web & Persistence
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Lightweight Validation (Standard Jakarta/Hibernate constraints)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // PostgreSQL Driver
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Project Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Test Suite
+    testImplementation 'com.h2database:h2'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+
+    // 1. Force the test JVM worker to shut down immediately after testing
+    // rather than idling in the background holding file locks
+    forkEvery = 1
+
+    // 2. Disable binary test result tracking when rerun to avoid locked binary folders
+    reports {
+        html.required.set(true)
+        junitXml.required.set(true)
+    }
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = false
+    }
+
+    // 3. Prevent JVM memory mapping from locking JARs and binary results on Windows
+    jvmArgs += [
+            "-Dsun.io.useCanonCaches=false",
+            "-Dsun.zip.disableMemoryMapping=true"
+    ]
+}
+
+// 4. Ensure compile tasks delete cleanly before recompiling
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-parameters']
+    options.fork = true
+    options.forkOptions.jvmArgs += [
+            "-Dsun.io.useCanonCaches=false",
+            "-Dsun.zip.disableMemoryMapping=true"
+    ]
+}
